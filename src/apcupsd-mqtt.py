@@ -9,7 +9,7 @@ def main():
     mqtt_port = int(os.getenv('MQTT_PORT', 1883))
     mqtt_host = os.getenv('MQTT_HOST', 'localhost')
     interval = float(os.getenv('APCUPSD_INTERVAL', 10))
-    alias = os.getenv('alias', '')
+    alias = os.getenv('UPS_ALIAS', '')
     apcupsd_host = os.getenv('APCUPSD_HOST','127.0.0.1')
 
     # Get initial data
