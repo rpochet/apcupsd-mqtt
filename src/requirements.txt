@@ -1,3 +1,2 @@
-PrettyTable
 apcaccess
 paho-mqtt
