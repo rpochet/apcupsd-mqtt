@@ -1,2 +1,2 @@
-apcaccess
-paho-mqtt
+apcaccess==0.0.13
+paho-mqtt==1.6.1
