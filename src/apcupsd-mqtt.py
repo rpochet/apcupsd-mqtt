@@ -40,13 +40,13 @@ def main():
     status_topic = "homeassistant/sensor/apc_ups_" + alias + "/status/config"
     status_payload = {
         "device": {
-            "identifiers": ["apc_ups_" + alias],
+            "identifiers": ["apc_ups_" + serial_no],
             "manufacturer": "APC",
             "name": alias,
             "model": model,
             "sw_version": firmware
         },
-        "unique_id": "apc_ups_" + alias + "_status",
+        "unique_id": "apc_ups_" + serial_no + "_status",
         "name": "apc_ups_" + alias + "_status",
         "state_topic": mqtt_topic,
         "value_template": "{{ value_json.status}}"
@@ -58,12 +58,12 @@ def main():
     linev_payload = {
         "device_class": "voltage",
         "device": {
-            "identifiers": ["apc_ups_" + alias],
+            "identifiers": ["apc_ups_" + serial_no],
             "manufacturer": "APC", "name": alias,
             "model": model,
             "sw_version": firmware
         },
-        "unique_id": "apc_ups_" + alias + "_linev",
+        "unique_id": "apc_ups_" + serial_no + "_linev",
         "name": "apc_ups_" + alias + "_line_voltage",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "V",
@@ -76,13 +76,13 @@ def main():
     loadpct_payload = {
         "device_class": "power_factor",
         "device": {
-            "identifiers": ["apc_ups_" + alias],
+            "identifiers": ["apc_ups_" + serial_no],
             "manufacturer": "APC",
             "name": alias,
             "model": model,
             "sw_version": firmware
         },
-        "unique_id": "apc_ups_" + alias + "_loadpct",
+        "unique_id": "apc_ups_" + serial_no + "_loadpct",
         "name": "apc_ups_" + alias + "_load",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "%",
@@ -95,13 +95,13 @@ def main():
     bcharge_payload = {
         "device_class": "battery",
         "device": {
-            "identifiers": ["apc_ups_" + alias],
+            "identifiers": ["apc_ups_" + serial_no],
             "manufacturer": "APC",
             "name": alias,
             "model": model,
             "sw_version": firmware
         },
-        "unique_id": "apc_ups_" + alias + "_bcharge",
+        "unique_id": "apc_ups_" + serial_no + "_bcharge",
         "name": "apc_ups_" + alias + "_battery",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "%",
@@ -113,12 +113,12 @@ def main():
     timeleft_topic = "homeassistant/sensor/apc_ups_" + alias + "/timeleft/config"
     timeleft_payload = {
         "device": {
-            "identifiers": ["apc_ups_" + alias],
+            "identifiers": ["apc_ups_" + serial_no],
             "manufacturer": "APC",
             "name": alias, "model": model,
             "sw_version": firmware
         },
-        "unique_id": "apc_ups_" + alias + "_timeleft",
+        "unique_id": "apc_ups_" + serial_no + "_timeleft",
         "name": "apc_ups_" + alias + "_time_remaining",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "S",
@@ -131,13 +131,13 @@ def main():
     battv_payload = {
         "device_class": "voltage",
         "device": {
-            "identifiers": ["apc_ups_" + alias],
+            "identifiers": ["apc_ups_" + serial_no],
             "manufacturer": "APC",
             "name": alias,
             "model": model,
             "sw_version": firmware
         },
-        "unique_id": "apc_ups_" + alias + "_battv",
+        "unique_id": "apc_ups_" + serial_no + "_battv",
         "name": "apc_ups_" + alias + "_battery_voltage",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "V",
@@ -150,13 +150,13 @@ def main():
     power_payload = {
         "device_class": "power",
         "device": {
-            "identifiers": ["apc_ups_" + alias],
+            "identifiers": ["apc_ups_" + serial_no],
             "manufacturer": "APC",
             "name": alias,
             "model": model,
             "sw_version": firmware
         },
-        "unique_id": "apc_ups_" + alias + "_power",
+        "unique_id": "apc_ups_" + serial_no + "_power",
         "name": "apc_ups_" + alias + "_power",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "W",
