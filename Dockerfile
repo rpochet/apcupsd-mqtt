@@ -1,4 +1,5 @@
 FROM python:3.9
+LABEL org.opencontainers.image.source https://github.com/andras-tim/apcupsd-mqtt
 
 WORKDIR /app
 
