@@ -10,6 +10,11 @@ from apcaccess import status as apc
 def main():
     mqtt_port = int(os.getenv('MQTT_PORT', 1883))
     mqtt_host = os.getenv('MQTT_HOST', 'localhost')
+    mqtt_user = os.getenv('MQTT_USER')
+    mqtt_password = os.getenv('MQTT_PASSWORD')
+
+    mqtt_auth = {'username': mqtt_user, 'password': mqtt_password} if mqtt_user and mqtt_password else None
+
     interval = float(os.getenv('APCUPSD_INTERVAL', 10))
     alias = os.getenv('UPS_ALIAS', '')
     apcupsd_host = os.getenv('APCUPSD_HOST', '127.0.0.1')
@@ -159,7 +164,7 @@ def main():
     }
     discovery_msgs.append({'topic': power_topic, 'payload': json.dumps(power_payload), 'retain': True})
 
-    publish.multiple(discovery_msgs, hostname=mqtt_host, port=mqtt_port, auth=None)
+    publish.multiple(discovery_msgs, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth)
 
     while True:
         ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
@@ -182,7 +187,7 @@ def main():
         print(status)
 
         # Publish results
-        publish.single(mqtt_topic, json.dumps(status), hostname=mqtt_host, port=mqtt_port, auth=None, retain=True)
+        publish.single(mqtt_topic, json.dumps(status), hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
 
         time.sleep(interval)
 
