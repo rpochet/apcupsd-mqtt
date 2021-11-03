@@ -121,7 +121,8 @@ def main():
         "unique_id": "apc_ups_" + serial_no + "_timeleft",
         "name": "apc_ups_" + alias + "_time_remaining",
         "state_topic": mqtt_topic,
-        "unit_of_measurement": "S",
+        "icon": "mdi:clock-alert",
+        "unit_of_measurement": "Minutes",
         "value_template": "{{ value_json.timeleft}}"
     }
     discovery_msgs.append({'topic': timeleft_topic, 'payload': json.dumps(timeleft_payload), 'retain': True})
