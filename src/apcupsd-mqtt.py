@@ -67,6 +67,7 @@ def main():
         "name": "apc_ups_" + alias + "_line_voltage",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "V",
+        "state_class": "measurement",
         "value_template": "{{ value_json.linev}}"
     }
     discovery_msgs.append({'topic': linev_topic, 'payload': json.dumps(linev_payload), 'retain': True})
@@ -86,6 +87,7 @@ def main():
         "name": "apc_ups_" + alias + "_load",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "%",
+        "state_class": "measurement",
         "value_template": "{{ value_json.loadpct}}"
     }
     discovery_msgs.append({'topic': loadpct_topic, 'payload': json.dumps(loadpct_payload), 'retain': True})
@@ -105,6 +107,7 @@ def main():
         "name": "apc_ups_" + alias + "_battery",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "%",
+        "state_class": "measurement",
         "value_template": "{{ value_json.bcharge}}"
     }
     discovery_msgs.append({'topic': bcharge_topic, 'payload': json.dumps(bcharge_payload), 'retain': True})
@@ -123,6 +126,7 @@ def main():
         "state_topic": mqtt_topic,
         "icon": "mdi:clock-alert",
         "unit_of_measurement": "Minutes",
+        "state_class": "measurement",
         "value_template": "{{ value_json.timeleft}}"
     }
     discovery_msgs.append({'topic': timeleft_topic, 'payload': json.dumps(timeleft_payload), 'retain': True})
@@ -142,6 +146,7 @@ def main():
         "name": "apc_ups_" + alias + "_battery_voltage",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "V",
+        "state_class": "measurement",
         "value_template": "{{ value_json.battv}}"
     }
     discovery_msgs.append({'topic': battv_topic, 'payload': json.dumps(battv_payload), 'retain': True})
@@ -161,6 +166,7 @@ def main():
         "name": "apc_ups_" + alias + "_power",
         "state_topic": mqtt_topic,
         "unit_of_measurement": "W",
+        "state_class": "measurement",
         "value_template": "{{ value_json.power}}"
     }
     discovery_msgs.append({'topic': power_topic, 'payload': json.dumps(power_payload), 'retain': True})
