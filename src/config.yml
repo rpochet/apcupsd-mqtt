@@ -1,0 +1,46 @@
+---
+
+sensor:
+  # Status
+  status:
+
+  # Current input line voltage
+  line_voltage:
+    _key: linev
+    state_class: measurement
+    device_class: voltage
+    unit_of_measurement: 'V'
+
+  # Percentage of UPS load capacity used
+  load:
+    _key: loadpct
+    state_class: measurement
+    device_class: power_factor
+    unit_of_measurement: '%'
+
+  # Current battery capacity charge percentage
+  battery:
+    _key: bcharge
+    state_class: measurement
+    device_class: battery
+    unit_of_measurement: '%'
+
+  # Remaining runtime left on battery as estimated by UPS
+  time_remaining:
+    _key: timeleft
+    state_class: measurement
+    unit_of_measurement: 'Minutes'
+    icon: mdi:clock-alert
+
+  # Current battery voltage
+  battery_voltage:
+    _key: battv
+    state_class: measurement
+    device_class: voltage
+    unit_of_measurement: 'V'
+
+  # Current power usage in watts
+  power:
+    state_class: measurement
+    device_class: power
+    unit_of_measurement: 'W'

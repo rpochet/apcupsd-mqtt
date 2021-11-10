@@ -2,9 +2,16 @@
 import json
 import os
 import time
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple, Optional
 
 import paho.mqtt.publish as publish
 from apcaccess import status as apc
+from yaml import safe_load
+
+BASE_DIR = Path(__file__).parent
+
+SensorConfig = NamedTuple('SensorConfig', [('topic', str), ('payload', Dict['str', Any])])
 
 
 def main():
@@ -29,174 +36,105 @@ def main():
     if not alias:
         alias = serial_no
 
-    mqtt_topic = "apcupsd" + "/" + alias
+    mqtt_topic = "apcupsd/{}".format(alias)
+    config = Config(serial_no, alias, model, firmware, mqtt_topic)
 
     # Home Assistant
     print("Configuring Home Assistant...")
 
-    discovery_msgs = []
-
-    # Status
-    status_topic = "homeassistant/sensor/apc_ups_" + alias + "/status/config"
-    status_payload = {
-        "device": {
-            "identifiers": ["apc_ups_" + serial_no],
-            "manufacturer": "APC",
-            "name": alias,
-            "model": model,
-            "sw_version": firmware
-        },
-        "unique_id": "apc_ups_" + serial_no + "_status",
-        "name": "apc_ups_" + alias + "_status",
-        "state_topic": mqtt_topic,
-        "value_template": "{{ value_json.status}}"
-    }
-    discovery_msgs.append({'topic': status_topic, 'payload': json.dumps(status_payload), 'retain': True})
-
-    # Current input line voltage
-    linev_topic = "homeassistant/sensor/apc_ups_" + alias + "/linev/config"
-    linev_payload = {
-        "device_class": "voltage",
-        "device": {
-            "identifiers": ["apc_ups_" + serial_no],
-            "manufacturer": "APC", "name": alias,
-            "model": model,
-            "sw_version": firmware
-        },
-        "unique_id": "apc_ups_" + serial_no + "_linev",
-        "name": "apc_ups_" + alias + "_line_voltage",
-        "state_topic": mqtt_topic,
-        "unit_of_measurement": "V",
-        "state_class": "measurement",
-        "value_template": "{{ value_json.linev}}"
-    }
-    discovery_msgs.append({'topic': linev_topic, 'payload': json.dumps(linev_payload), 'retain': True})
-
-    # Percentage of UPS load capacity used
-    loadpct_topic = "homeassistant/sensor/apc_ups_" + alias + "/loadpct/config"
-    loadpct_payload = {
-        "device_class": "power_factor",
-        "device": {
-            "identifiers": ["apc_ups_" + serial_no],
-            "manufacturer": "APC",
-            "name": alias,
-            "model": model,
-            "sw_version": firmware
-        },
-        "unique_id": "apc_ups_" + serial_no + "_loadpct",
-        "name": "apc_ups_" + alias + "_load",
-        "state_topic": mqtt_topic,
-        "unit_of_measurement": "%",
-        "state_class": "measurement",
-        "value_template": "{{ value_json.loadpct}}"
-    }
-    discovery_msgs.append({'topic': loadpct_topic, 'payload': json.dumps(loadpct_payload), 'retain': True})
-
-    # Current battery capacity charge percentage
-    bcharge_topic = "homeassistant/sensor/apc_ups_" + alias + "/bcharge/config"
-    bcharge_payload = {
-        "device_class": "battery",
-        "device": {
-            "identifiers": ["apc_ups_" + serial_no],
-            "manufacturer": "APC",
-            "name": alias,
-            "model": model,
-            "sw_version": firmware
-        },
-        "unique_id": "apc_ups_" + serial_no + "_bcharge",
-        "name": "apc_ups_" + alias + "_battery",
-        "state_topic": mqtt_topic,
-        "unit_of_measurement": "%",
-        "state_class": "measurement",
-        "value_template": "{{ value_json.bcharge}}"
-    }
-    discovery_msgs.append({'topic': bcharge_topic, 'payload': json.dumps(bcharge_payload), 'retain': True})
-
-    # Remaining runtime left on battery as estimated by UPS
-    timeleft_topic = "homeassistant/sensor/apc_ups_" + alias + "/timeleft/config"
-    timeleft_payload = {
-        "device": {
-            "identifiers": ["apc_ups_" + serial_no],
-            "manufacturer": "APC",
-            "name": alias, "model": model,
-            "sw_version": firmware
-        },
-        "unique_id": "apc_ups_" + serial_no + "_timeleft",
-        "name": "apc_ups_" + alias + "_time_remaining",
-        "state_topic": mqtt_topic,
-        "icon": "mdi:clock-alert",
-        "unit_of_measurement": "Minutes",
-        "state_class": "measurement",
-        "value_template": "{{ value_json.timeleft}}"
-    }
-    discovery_msgs.append({'topic': timeleft_topic, 'payload': json.dumps(timeleft_payload), 'retain': True})
-
-    # Current battery voltage
-    battv_topic = "homeassistant/sensor/apc_ups_" + alias + "/battv/config"
-    battv_payload = {
-        "device_class": "voltage",
-        "device": {
-            "identifiers": ["apc_ups_" + serial_no],
-            "manufacturer": "APC",
-            "name": alias,
-            "model": model,
-            "sw_version": firmware
-        },
-        "unique_id": "apc_ups_" + serial_no + "_battv",
-        "name": "apc_ups_" + alias + "_battery_voltage",
-        "state_topic": mqtt_topic,
-        "unit_of_measurement": "V",
-        "state_class": "measurement",
-        "value_template": "{{ value_json.battv}}"
-    }
-    discovery_msgs.append({'topic': battv_topic, 'payload': json.dumps(battv_payload), 'retain': True})
-
-    # Current power usage in watts
-    power_topic = "homeassistant/sensor/apc_ups_" + alias + "/power/config"
-    power_payload = {
-        "device_class": "power",
-        "device": {
-            "identifiers": ["apc_ups_" + serial_no],
-            "manufacturer": "APC",
-            "name": alias,
-            "model": model,
-            "sw_version": firmware
-        },
-        "unique_id": "apc_ups_" + serial_no + "_power",
-        "name": "apc_ups_" + alias + "_power",
-        "state_topic": mqtt_topic,
-        "unit_of_measurement": "W",
-        "state_class": "measurement",
-        "value_template": "{{ value_json.power}}"
-    }
-    discovery_msgs.append({'topic': power_topic, 'payload': json.dumps(power_payload), 'retain': True})
+    discovery_msgs = [
+        {
+            'topic': sensor.topic,
+            'payload': json.dumps(sensor.payload, sort_keys=True),
+            'retain': True,
+        }
+        for sensor in config.sensors
+    ]
 
     publish.multiple(discovery_msgs, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth)
 
     while True:
         ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
 
-        status = {}
-
         # Calculate power
         try:
             max_watts = float(ups_data.get('NOMPOWER', 0.0))
             current_percent = float(ups_data.get('LOADPCT', 0.0))
-            current_watts = ((max_watts * current_percent) / 100)
-            ups_data['POWER'] = current_watts
-
+            ups_data['POWER'] = ((max_watts * current_percent) / 100)
         except:
             print("Failed to calculate power...")
 
-        for k in ups_data:
-            status[str(k).lower()] = str(ups_data[k])
+        status = {
+            key.lower(): str(value)
+            for key, value in ups_data.items()
+        }
+        status_string = json.dumps(status, sort_keys=True)
 
-        print(status)
+        print(status_string)
 
         # Publish results
-        publish.single(mqtt_topic, json.dumps(status), hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
+        publish.single(mqtt_topic, status_string, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
 
         time.sleep(interval)
+
+
+class Config:
+    SENSOR_TYPES = (
+        'binary_sensor',
+        'sensor',
+    )
+
+    def __init__(self, serial_no, alias, model, firmware, mqtt_topic):
+        self.__serial_no = serial_no
+        self.__alias = alias
+        self.__model = model
+        self.__firmware = firmware
+        self.__mqtt_topic = mqtt_topic
+
+        with BASE_DIR.joinpath('config.yml').open() as fd:
+            raw_config = safe_load(fd)
+
+        self.__sensors = []
+        for sensor_type in self.__class__.SENSOR_TYPES:
+            raw_sensors = raw_config.get(sensor_type) or {}
+
+            self.__sensors.extend([
+                self.__get_device_descriptor(sensor_type, name, config)
+                for name, config in sorted(raw_sensors.items())
+            ])
+
+    def __get_device_descriptor(self, sensor_type: str, name: str, config: Optional[dict]) -> SensorConfig:
+        if config is None:
+            config = {}
+
+        query_key = name
+        if '_key' in config:
+            query_key = config.pop('_key')
+
+        topic = "homeassistant/{}/apc_ups_{}/{}/config".format(sensor_type, self.__alias, query_key)
+
+        payload = {
+            "device": {
+                "identifiers": [
+                    "apc_ups_{}".format(self.__serial_no),
+                ],
+                "manufacturer": "APC",
+                "name": self.__alias,
+                "model": self.__model,
+                "sw_version": self.__firmware,
+            },
+            "unique_id": "apc_ups_{}_{}".format(self.__serial_no, query_key),
+            "name": "apc_ups_{}_{}".format(self.__alias, name),
+            "state_topic": self.__mqtt_topic,
+            "value_template": "{{{{value_json.{}}}}}".format(query_key),
+        }
+        payload.update(config)
+
+        return SensorConfig(topic, payload)
+
+    @property
+    def sensors(self) -> List[SensorConfig]:
+        return self.__sensors
 
 
 if __name__ == '__main__':
