@@ -17,7 +17,6 @@ sensor:
     state_class: measurement
     device_class: voltage
     unit_of_measurement: 'V'
-#    icon: mdi:flash
 
   # The nominal battery voltage. (e.g. 24.0 volts)
   battery_nominal_voltage:
@@ -25,7 +24,6 @@ sensor:
     entity_category: diagnostic
     device_class: voltage
     unit_of_measurement: 'V'
-#    icon: mdi:flash
 
   # The percentage charge on the batteries. (e.g. 100.0 percent)
   battery:
@@ -33,7 +31,6 @@ sensor:
     state_class: measurement
     device_class: battery
     unit_of_measurement: '%'
-#    icon: mdi:battery
 
   # If the battery charge percentage (BCHARGE) drops below this value, apcupsd will shutdown your system. (e.g. 5 percent)
   battery_shutdown:
@@ -57,7 +54,6 @@ sensor:
     entity_category: diagnostic
     device_class: voltage
     unit_of_measurement: 'V'
-#    icon: mdi:flash
 
   # The line voltage above which the UPS will switch to batteries. (e.g. 288.0 volts)
   transfer_high:
@@ -65,7 +61,6 @@ sensor:
     entity_category: diagnostic
     device_class: voltage
     unit_of_measurement: 'V'
-#    icon: mdi:flash
 
   # The current line voltage as returned by the UPS. (e.g. 232.0 volts)
   input_voltage:
@@ -73,7 +68,6 @@ sensor:
     state_class: measurement
     device_class: voltage
     unit_of_measurement: 'V'
-#    icon: mdi:flash
 
   # The input voltage that the UPS is configured to expect. (e.g. 230 volts)
   nominal_input_voltage:
@@ -81,7 +75,6 @@ sensor:
     entity_category: diagnostic
     device_class: voltage
     unit_of_measurement: 'V'
-#    icon: mdi:flash
 
   # The remaining runtime left on batteries as estimated by the UPS. (e.g. 40.9 minutes)
   time_left:
