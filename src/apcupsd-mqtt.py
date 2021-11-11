@@ -28,7 +28,7 @@ def main():
     alias = os.getenv('UPS_ALIAS', '')
     apcupsd_host = os.getenv('APCUPSD_HOST', '127.0.0.1')
 
-    print("Get initial data from UPS... {!r}".format(apcupsd_host), file=sys.stderr)
+    print('Get initial data from UPS... {!r}'.format(apcupsd_host), file=sys.stderr)
     ups = apc.parse(apc.get(host=apcupsd_host))
 
     serial_no = ups.get('SERIALNO', '000000000000')
@@ -38,10 +38,10 @@ def main():
     if not alias:
         alias = serial_no
 
-    mqtt_topic = "apcupsd/{}".format(alias)
+    mqtt_topic = 'apcupsd/{}'.format(alias)
     config = Config(serial_no, alias, model, firmware, mqtt_topic)
 
-    print("Configuring Home Assistant via MQTT Discovery...", file=sys.stderr)
+    print('Configuring Home Assistant via MQTT Discovery...', file=sys.stderr)
     discovery_msgs = [
         {
             'topic': sensor.topic,
@@ -53,7 +53,7 @@ def main():
 
     publish.multiple(discovery_msgs, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth)
 
-    print("Starting value updater loop...", file=sys.stderr)
+    print('Starting value updater loop...', file=sys.stderr)
 
     while True:
         ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
@@ -64,7 +64,7 @@ def main():
             current_percent = float(ups_data.get('LOADPCT', 0.0))
             ups_data['POWER'] = ((max_watts * current_percent) / 100)
         except:
-            print("Failed to calculate power...", file=sys.stderr)
+            print('Failed to calculate power...', file=sys.stderr)
 
         status = {
             key.lower(): str(value)
@@ -114,22 +114,22 @@ class Config:
         if '_key' in config:
             query_key = config.pop('_key')
 
-        topic = "homeassistant/{}/apc_ups_{}/{}/config".format(sensor_type, self.__alias, query_key)
+        topic = 'homeassistant/{}/apc_ups_{}/{}/config'.format(sensor_type, self.__alias, query_key)
 
         payload = {
-            "device": {
-                "identifiers": [
-                    "apc_ups_{}".format(self.__serial_no),
+            'device': {
+                'identifiers': [
+                    'apc_ups_{}'.format(self.__serial_no),
                 ],
-                "manufacturer": "APC",
-                "name": self.__alias,
-                "model": self.__model,
-                "sw_version": self.__firmware,
+                'manufacturer': 'APC',
+                'name': self.__alias,
+                'model': self.__model,
+                'sw_version': self.__firmware,
             },
-            "unique_id": "apc_ups_{}_{}".format(self.__serial_no, query_key),
-            "name": "apc_ups_{}_{}".format(self.__alias, name),
-            "state_topic": self.__mqtt_topic,
-            "value_template": "{{{{value_json.{}}}}}".format(query_key),
+            'unique_id': 'apc_ups_{}_{}'.format(self.__serial_no, query_key),
+            'name': 'apc_ups_{}_{}'.format(self.__alias, name),
+            'state_topic': self.__mqtt_topic,
+            'value_template': '{{{{value_json.{}}}}}'.format(query_key),
         }
         payload.update(config)
 
