@@ -15,15 +15,15 @@ sensor:
   battery_voltage:
     _key: battv
     state_class: measurement
-    device_class: voltage
     unit_of_measurement: 'V'
+    icon: mdi:current-dc
 
   # The nominal battery voltage. (e.g. 24.0 volts)
   battery_nominal_voltage:
     _key: nombattv
     entity_category: diagnostic
-    device_class: voltage
     unit_of_measurement: 'V'
+    icon: mdi:current-dc
 
   # The percentage charge on the batteries. (e.g. 100.0 percent)
   battery:
@@ -36,7 +36,6 @@ sensor:
   battery_shutdown:
     _key: mbattchg
     entity_category: diagnostic
-    device_class: battery
     unit_of_measurement: '%'
     icon: mdi:battery-alert
 
@@ -52,15 +51,15 @@ sensor:
   transfer_low:
     _key: lotrans
     entity_category: diagnostic
-    device_class: voltage
     unit_of_measurement: 'V'
+    icon: mdi:sine-wave
 
   # The line voltage above which the UPS will switch to batteries. (e.g. 288.0 volts)
   transfer_high:
     _key: hitrans
     entity_category: diagnostic
-    device_class: voltage
     unit_of_measurement: 'V'
+    icon: mdi:sine-wave
 
   # The current line voltage as returned by the UPS. (e.g. 232.0 volts)
   input_voltage:
@@ -73,8 +72,8 @@ sensor:
   nominal_input_voltage:
     _key: nominv
     entity_category: diagnostic
-    device_class: voltage
     unit_of_measurement: 'V'
+    icon: mdi:sine-wave
 
   # The remaining runtime left on batteries as estimated by the UPS. (e.g. 40.9 minutes)
   time_left:
@@ -109,8 +108,8 @@ sensor:
   nominal_power:
     _key: nompower
     entity_category: diagnostic
-    device_class: power
     unit_of_measurement: 'W'
+    icon: mdi:flash
 
   # The reason for the last transfer to batteries.
   last_transfer:
