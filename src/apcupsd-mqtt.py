@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import json
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -17,6 +18,8 @@ BASE_DIR = Path(__file__).parent
 MQTT_TOPIC = 'apcupsd'
 MQTT_STATUS_TOPIC = '{}/status'.format(MQTT_TOPIC)
 
+main_loop_condition = True
+
 
 def main():
     debug_logging = os.getenv('DEBUG', '0') == '1'
@@ -27,7 +30,7 @@ def main():
 
     mqtt_auth = {'username': mqtt_user, 'password': mqtt_password} if mqtt_user and mqtt_password else None
 
-    interval = float(os.getenv('APCUPSD_INTERVAL', 10))
+    interval = int(os.getenv('APCUPSD_INTERVAL', 10))
     alias = os.getenv('UPS_ALIAS', '')
     apcupsd_host = os.getenv('APCUPSD_HOST', '127.0.0.1')
 
@@ -58,12 +61,27 @@ def main():
 
     print('Starting value updater loop...', file=sys.stderr)
 
-    publish.single(MQTT_STATUS_TOPIC, 'online', hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
+    signal.signal(signal.SIGINT, stop_main_loop)
+    signal.signal(signal.SIGTERM, stop_main_loop)
+
+    first_iteration = True
     try:
         while True:
             main_loop(apcupsd_host, debug_logging, mqtt_auth, mqtt_host, mqtt_port, mqtt_topic)
-            time.sleep(interval)
+
+            if first_iteration:
+                print('Set status to "online"', file=sys.stderr)
+                publish.single(MQTT_STATUS_TOPIC, 'online', hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
+
+            for _ in range(interval * 2):
+                time.sleep(0.5)
+
+                if not main_loop_condition:
+                    exit(0)
+
+            first_iteration = False
     finally:
+        print('Set status to "offline"', file=sys.stderr)
         publish.single(MQTT_STATUS_TOPIC, 'offline', hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
 
 
@@ -81,6 +99,11 @@ def main_loop(apcupsd_host, debug_logging, mqtt_auth, mqtt_host, mqtt_port, mqtt
     # Publish results
     publish.single(mqtt_topic, status_string, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
 
+
+def stop_main_loop(*args) -> None:
+    global main_loop_condition
+
+    main_loop_condition = False
 
 class Config:
     SENSOR_TYPES = (
