@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import json
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional
@@ -15,6 +16,7 @@ SensorConfig = NamedTuple('SensorConfig', [('topic', str), ('payload', Dict['str
 
 
 def main():
+    debug_logging = os.getenv('DEBUG', '0') == '1'
     mqtt_port = int(os.getenv('MQTT_PORT', 1883))
     mqtt_host = os.getenv('MQTT_HOST', 'localhost')
     mqtt_user = os.getenv('MQTT_USER')
@@ -26,7 +28,7 @@ def main():
     alias = os.getenv('UPS_ALIAS', '')
     apcupsd_host = os.getenv('APCUPSD_HOST', '127.0.0.1')
 
-    # Get initial data
+    print("Get initial data from UPS... {!r}".format(apcupsd_host), file=sys.stderr)
     ups = apc.parse(apc.get(host=apcupsd_host))
 
     serial_no = ups.get('SERIALNO', '000000000000')
@@ -39,9 +41,7 @@ def main():
     mqtt_topic = "apcupsd/{}".format(alias)
     config = Config(serial_no, alias, model, firmware, mqtt_topic)
 
-    # Home Assistant
-    print("Configuring Home Assistant...")
-
+    print("Configuring Home Assistant via MQTT Discovery...", file=sys.stderr)
     discovery_msgs = [
         {
             'topic': sensor.topic,
@@ -53,6 +53,8 @@ def main():
 
     publish.multiple(discovery_msgs, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth)
 
+    print("Starting value updater loop...", file=sys.stderr)
+
     while True:
         ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
 
@@ -62,7 +64,7 @@ def main():
             current_percent = float(ups_data.get('LOADPCT', 0.0))
             ups_data['POWER'] = ((max_watts * current_percent) / 100)
         except:
-            print("Failed to calculate power...")
+            print("Failed to calculate power...", file=sys.stderr)
 
         status = {
             key.lower(): str(value)
@@ -70,7 +72,8 @@ def main():
         }
         status_string = json.dumps(status, sort_keys=True)
 
-        print(status_string)
+        if debug_logging:
+            print(status_string)
 
         # Publish results
         publish.single(mqtt_topic, status_string, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)

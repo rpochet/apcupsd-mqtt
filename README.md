@@ -6,6 +6,7 @@
 
 ## Environment variables
 
+- ``DEBUG=1`` print all queried values on STDOUT
 - ``APCUPSD_HOST`` hostname or IP address of the `apcupsd` (default: `127.0.0.1`)
 - ``UPS_ALIAS`` device name (default: _device serial_)
 - ``APCUPSD_INTERVAL`` refresh interval in seconds (default: `10`)
