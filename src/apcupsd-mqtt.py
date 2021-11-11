@@ -10,9 +10,12 @@ import paho.mqtt.publish as publish
 from apcaccess import status as apc
 from yaml import safe_load
 
+SensorConfig = NamedTuple('SensorConfig', [('topic', str), ('payload', Dict['str', Any])])
+
 BASE_DIR = Path(__file__).parent
 
-SensorConfig = NamedTuple('SensorConfig', [('topic', str), ('payload', Dict['str', Any])])
+MQTT_TOPIC = 'apcupsd'
+MQTT_STATUS_TOPIC = '{}/status'.format(MQTT_TOPIC)
 
 
 def main():
@@ -38,7 +41,7 @@ def main():
     if not alias:
         alias = serial_no
 
-    mqtt_topic = 'apcupsd/{}'.format(alias)
+    mqtt_topic = '{}/ups/{}'.format(MQTT_TOPIC, alias)
     config = Config(serial_no, alias, model, firmware, mqtt_topic)
 
     print('Configuring Home Assistant via MQTT Discovery...'.format(mqtt_host, mqtt_port), file=sys.stderr)
@@ -55,22 +58,28 @@ def main():
 
     print('Starting value updater loop...', file=sys.stderr)
 
-    while True:
-        ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
+    publish.single(MQTT_STATUS_TOPIC, 'online', hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
+    try:
+        while True:
+            main_loop(apcupsd_host, debug_logging, mqtt_auth, mqtt_host, mqtt_port, mqtt_topic)
+            time.sleep(interval)
+    finally:
+        publish.single(MQTT_STATUS_TOPIC, 'offline', hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
 
-        status = {
-            key.lower(): str(value)
-            for key, value in ups_data.items()
-        }
-        status_string = json.dumps(status, sort_keys=True)
 
-        if debug_logging:
-            print(status_string)
+def main_loop(apcupsd_host, debug_logging, mqtt_auth, mqtt_host, mqtt_port, mqtt_topic):
+    ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
+    status = {
+        key.lower(): str(value)
+        for key, value in ups_data.items()
+    }
 
-        # Publish results
-        publish.single(mqtt_topic, status_string, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
+    status_string = json.dumps(status, sort_keys=True)
+    if debug_logging:
+        print(status_string)
 
-        time.sleep(interval)
+    # Publish results
+    publish.single(mqtt_topic, status_string, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
 
 
 class Config:
@@ -120,6 +129,7 @@ class Config:
             },
             'unique_id': 'apc_ups_{}_{}'.format(self.__serial_no, query_key),
             'name': 'apc_ups_{}_{}'.format(self.__alias, name),
+            'availability_topic': MQTT_STATUS_TOPIC,
             'state_topic': self.__mqtt_topic,
             'json_attributes_topic': self.__mqtt_topic,
             'value_template': '{{{{value_json.{}}}}}'.format(query_key),
