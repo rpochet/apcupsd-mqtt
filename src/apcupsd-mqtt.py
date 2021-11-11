@@ -121,6 +121,7 @@ class Config:
             'unique_id': 'apc_ups_{}_{}'.format(self.__serial_no, query_key),
             'name': 'apc_ups_{}_{}'.format(self.__alias, name),
             'state_topic': self.__mqtt_topic,
+            'json_attributes_topic': self.__mqtt_topic,
             'value_template': '{{{{value_json.{}}}}}'.format(query_key),
         }
         payload.update(config)
