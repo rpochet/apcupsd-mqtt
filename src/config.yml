@@ -102,6 +102,8 @@ sensor:
     state_class: measurement
     device_class: power
     unit_of_measurement: 'W'
+    value_template: |-
+      {{ ((value_json.nompower | float) * (value_json.loadpct | float) / 100) | d }}
 
   # The maximum power in Watts that the UPS is designed to supply.
   nominal_power:

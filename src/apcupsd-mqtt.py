@@ -58,14 +58,6 @@ def main():
     while True:
         ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
 
-        # Calculate power
-        try:
-            max_watts = float(ups_data.get('NOMPOWER', 0.0))
-            current_percent = float(ups_data.get('LOADPCT', 0.0))
-            ups_data['POWER'] = ((max_watts * current_percent) / 100)
-        except:
-            print('Failed to calculate power...', file=sys.stderr)
-
         status = {
             key.lower(): str(value)
             for key, value in ups_data.items()
