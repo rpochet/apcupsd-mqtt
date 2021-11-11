@@ -41,7 +41,7 @@ def main():
     mqtt_topic = 'apcupsd/{}'.format(alias)
     config = Config(serial_no, alias, model, firmware, mqtt_topic)
 
-    print('Configuring Home Assistant via MQTT Discovery...', file=sys.stderr)
+    print('Configuring Home Assistant via MQTT Discovery...'.format(mqtt_host, mqtt_port), file=sys.stderr)
     discovery_msgs = [
         {
             'topic': sensor.topic,
