@@ -86,7 +86,13 @@ def main():
 
 
 def main_loop(apcupsd_host, debug_logging, mqtt_auth, mqtt_host, mqtt_port, mqtt_topic):
-    ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
+    try:
+        ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
+    except Exception as e:
+        print('ERROR: {!r}'.format(e), file=sys.stderr)
+
+        return
+
     status = {
         key.lower(): str(value)
         for key, value in ups_data.items()
@@ -104,6 +110,7 @@ def stop_main_loop(*args) -> None:
     global main_loop_condition
 
     main_loop_condition = False
+
 
 class Config:
     SENSOR_TYPES = (
