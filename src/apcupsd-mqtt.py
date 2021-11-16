@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import json
+import logging
 import os
 import signal
 import sys
@@ -14,6 +15,7 @@ from yaml import safe_load
 SensorConfig = NamedTuple('SensorConfig', [('topic', str), ('payload', Dict['str', Any])])
 
 __FILE = Path(__file__)
+_LOGGER = logging.getLogger(__FILE.name)
 BASE_DIR = __FILE.parent
 
 MQTT_CLIENT_ID = __FILE.name
@@ -120,7 +122,7 @@ class HaCapableMqttClient(MqttClient):
         if status == self.__published_status:
             return
 
-        print('Publish status {!r}'.format(status), file=sys.stderr)
+        _LOGGER.info('Publish status {!r}'.format(status))
         self.publish_single(self.__status_topic, status, retain=True)
 
         self.__published_status = status
@@ -147,7 +149,9 @@ def main():
     alias = os.getenv('UPS_ALIAS', '')
     apcupsd_host = os.getenv('APCUPSD_HOST', '127.0.0.1')
 
-    print('Get initial data from UPS... {!r}'.format(apcupsd_host), file=sys.stderr)
+    configure_logging(debug_logging)
+
+    _LOGGER.info('Get initial data from UPS... {!r}'.format(apcupsd_host))
     ups = apc.parse(apc.get(host=apcupsd_host))
 
     serial_no = ups.get('SERIALNO', '000000000000')
@@ -162,7 +166,7 @@ def main():
     mqtt_topic = mqtt_client.get_abs_topic('ups', alias)
     config = Config(serial_no, alias, model, firmware, mqtt_topic, mqtt_client.status_topic)
 
-    print('Configuring Home Assistant via MQTT Discovery... {}:{}'.format(mqtt_host, mqtt_port), file=sys.stderr)
+    _LOGGER.info('Configuring Home Assistant via MQTT Discovery... {}:{}'.format(mqtt_host, mqtt_port))
 
     discovery_msgs = [
         {
@@ -174,7 +178,7 @@ def main():
     ]
     mqtt_client.publish_multiple(discovery_msgs)
 
-    print('Starting value updater loop...', file=sys.stderr)
+    _LOGGER.info('Starting value updater loop...')
 
     signal.signal(signal.SIGINT, stop_main_loop)
     signal.signal(signal.SIGTERM, stop_main_loop)
@@ -182,7 +186,7 @@ def main():
     exiting_main_loop = False
     try:
         while True:
-            main_loop(apcupsd_host, debug_logging, mqtt_client, mqtt_topic)
+            main_loop(apcupsd_host, mqtt_client, mqtt_topic)
 
             for _ in range(interval * 2):
                 time.sleep(0.5)
@@ -194,17 +198,42 @@ def main():
         mqtt_client.publish_offline_status()
 
 
+class LevelFilter(logging.Filter):
+    def __init__(self, filtered_level: int, **kwargs):
+        self.__filtered_level = filtered_level
+
+        super().__init__(**kwargs)
+
+    def filter(self, record: logging.LogRecord):
+        return record.levelno == self.__filtered_level
+
+
+def configure_logging(debug_logging: bool) -> None:
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setLevel(logging.DEBUG)
+    stderr_handler.addFilter(LevelFilter(logging.DEBUG))
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.INFO)
+
+    logging.basicConfig(
+        format='%(message)s',
+        level=logging.DEBUG if debug_logging else logging.INFO,
+        handlers=[stdout_handler, stderr_handler]
+    )
+
+
 def stop_main_loop(*args) -> None:
     global exiting_main_loop
 
     exiting_main_loop = True
 
 
-def main_loop(apcupsd_host, debug_logging, mqtt_client, mqtt_topic):
+def main_loop(apcupsd_host, mqtt_client, mqtt_topic):
     try:
         ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
     except Exception as e:
-        print('ERROR: {!r}'.format(e), file=sys.stderr)
+        _LOGGER.exception('ERROR: {!r}'.format(e), exc_info=False)
         mqtt_client.publish_offline_status()
 
         return
@@ -215,8 +244,7 @@ def main_loop(apcupsd_host, debug_logging, mqtt_client, mqtt_topic):
     }
 
     status_string = json.dumps(status, sort_keys=True)
-    if debug_logging:
-        print(status_string)
+    _LOGGER.debug(status_string)
 
     mqtt_client.publish_single(mqtt_topic, status_string)
     mqtt_client.publish_online_status()
