@@ -13,103 +13,13 @@ from yaml import safe_load
 
 SensorConfig = NamedTuple('SensorConfig', [('topic', str), ('payload', Dict['str', Any])])
 
-BASE_DIR = Path(__file__).parent
+__FILE = Path(__file__)
+BASE_DIR = __FILE.parent
 
+MQTT_CLIENT_ID = __FILE.name
 MQTT_TOPIC = 'apcupsd'
-MQTT_STATUS_TOPIC = '{}/status'.format(MQTT_TOPIC)
 
-main_loop_condition = True
-
-
-def main():
-    debug_logging = os.getenv('DEBUG', '0') == '1'
-    mqtt_port = int(os.getenv('MQTT_PORT', 1883))
-    mqtt_host = os.getenv('MQTT_HOST', 'localhost')
-    mqtt_user = os.getenv('MQTT_USER')
-    mqtt_password = os.getenv('MQTT_PASSWORD')
-
-    mqtt_auth = {'username': mqtt_user, 'password': mqtt_password} if mqtt_user and mqtt_password else None
-
-    interval = int(os.getenv('APCUPSD_INTERVAL', 10))
-    alias = os.getenv('UPS_ALIAS', '')
-    apcupsd_host = os.getenv('APCUPSD_HOST', '127.0.0.1')
-
-    print('Get initial data from UPS... {!r}'.format(apcupsd_host), file=sys.stderr)
-    ups = apc.parse(apc.get(host=apcupsd_host))
-
-    serial_no = ups.get('SERIALNO', '000000000000')
-    model = ups.get('MODEL', 'Unknown')
-    firmware = ups.get('FIRMWARE', 'FW 000.00')
-
-    if not alias:
-        alias = serial_no
-
-    mqtt_topic = '{}/ups/{}'.format(MQTT_TOPIC, alias)
-    config = Config(serial_no, alias, model, firmware, mqtt_topic)
-
-    print('Configuring Home Assistant via MQTT Discovery... {}:{}'.format(mqtt_host, mqtt_port), file=sys.stderr)
-    discovery_msgs = [
-        {
-            'topic': sensor.topic,
-            'payload': json.dumps(sensor.payload, sort_keys=True),
-            'retain': True,
-        }
-        for sensor in config.sensors
-    ]
-
-    publish.multiple(discovery_msgs, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth)
-
-    print('Starting value updater loop...', file=sys.stderr)
-
-    signal.signal(signal.SIGINT, stop_main_loop)
-    signal.signal(signal.SIGTERM, stop_main_loop)
-
-    first_iteration = True
-    try:
-        while True:
-            main_loop(apcupsd_host, debug_logging, mqtt_auth, mqtt_host, mqtt_port, mqtt_topic)
-
-            if first_iteration:
-                print('Set status to "online"', file=sys.stderr)
-                publish.single(MQTT_STATUS_TOPIC, 'online', hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
-
-            for _ in range(interval * 2):
-                time.sleep(0.5)
-
-                if not main_loop_condition:
-                    exit(0)
-
-            first_iteration = False
-    finally:
-        print('Set status to "offline"', file=sys.stderr)
-        publish.single(MQTT_STATUS_TOPIC, 'offline', hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
-
-
-def main_loop(apcupsd_host, debug_logging, mqtt_auth, mqtt_host, mqtt_port, mqtt_topic):
-    try:
-        ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
-    except Exception as e:
-        print('ERROR: {!r}'.format(e), file=sys.stderr)
-
-        return
-
-    status = {
-        key.lower(): str(value)
-        for key, value in ups_data.items()
-    }
-
-    status_string = json.dumps(status, sort_keys=True)
-    if debug_logging:
-        print(status_string)
-
-    # Publish results
-    publish.single(mqtt_topic, status_string, hostname=mqtt_host, port=mqtt_port, auth=mqtt_auth, retain=True)
-
-
-def stop_main_loop(*args) -> None:
-    global main_loop_condition
-
-    main_loop_condition = False
+exiting_main_loop = False
 
 
 class Config:
@@ -118,12 +28,13 @@ class Config:
         'sensor',
     )
 
-    def __init__(self, serial_no, alias, model, firmware, mqtt_topic):
+    def __init__(self, serial_no, alias, model, firmware, mqtt_state_topic: str, mqtt_availability_topic: str):
         self.__serial_no = serial_no
         self.__alias = alias
         self.__model = model
         self.__firmware = firmware
-        self.__mqtt_topic = mqtt_topic
+        self.__mqtt_state_topic = mqtt_state_topic
+        self.__availability_topic = mqtt_availability_topic
 
         with BASE_DIR.joinpath('config.yml').open() as fd:
             raw_config = safe_load(fd)
@@ -159,9 +70,9 @@ class Config:
             },
             'unique_id': 'apc_ups_{}_{}'.format(self.__serial_no, query_key),
             'name': 'apc_ups_{}_{}'.format(self.__alias, name),
-            'availability_topic': MQTT_STATUS_TOPIC,
-            'state_topic': self.__mqtt_topic,
-            'json_attributes_topic': self.__mqtt_topic,
+            'availability_topic': self.__availability_topic,
+            'state_topic': self.__mqtt_state_topic,
+            'json_attributes_topic': self.__mqtt_state_topic,
             'value_template': '{{{{value_json.{}}}}}'.format(query_key),
         }
         payload.update(config)
@@ -171,6 +82,144 @@ class Config:
     @property
     def sensors(self) -> List[SensorConfig]:
         return self.__sensors
+
+
+class MqttClient:
+    def __init__(self, broker_host: str, broker_port: int, broker_auth: Optional[dict] = None):
+        self.__connection_options = {
+            'hostname': broker_host,
+            'port': broker_port,
+            'auth': broker_auth,
+            'client_id': MQTT_CLIENT_ID
+        }
+
+    def publish_multiple(self, payloads: List[Dict[str, Any]], **kwargs) -> None:
+        publish.multiple(payloads, **self.__connection_options, **kwargs)
+
+    def publish_single(self, topic: str, payload: str, **kwargs) -> None:
+        publish.single(topic, payload, **self.__connection_options, **kwargs)
+
+
+class HaCapableMqttClient(MqttClient):
+    def __init__(self, base_topic: str, **kwargs):
+        self.__base_topic = base_topic
+        self.__status_topic = self.get_abs_topic('status')
+
+        self.__published_status = None
+
+        super().__init__(**kwargs)
+
+    @property
+    def status_topic(self) -> str:
+        return self.__status_topic
+
+    def get_abs_topic(self, *relative_topic: str) -> str:
+        return '/'.join([self.__base_topic] + list(relative_topic))
+
+    def __publish_status(self, status: str) -> None:
+        if status == self.__published_status:
+            return
+
+        print('Publish status {!r}'.format(status), file=sys.stderr)
+        self.publish_single(self.__status_topic, status, retain=True)
+
+        self.__published_status = status
+
+    def publish_online_status(self) -> None:
+        self.__publish_status('online')
+
+    def publish_offline_status(self) -> None:
+        self.__publish_status('offline')
+
+
+def main():
+    global exiting_main_loop
+
+    debug_logging = os.getenv('DEBUG', '0') == '1'
+    mqtt_port = int(os.getenv('MQTT_PORT', 1883))
+    mqtt_host = os.getenv('MQTT_HOST', 'localhost')
+    mqtt_user = os.getenv('MQTT_USER')
+    mqtt_password = os.getenv('MQTT_PASSWORD')
+
+    mqtt_auth = {'username': mqtt_user, 'password': mqtt_password} if mqtt_user and mqtt_password else None
+
+    interval = int(os.getenv('APCUPSD_INTERVAL', 10))
+    alias = os.getenv('UPS_ALIAS', '')
+    apcupsd_host = os.getenv('APCUPSD_HOST', '127.0.0.1')
+
+    print('Get initial data from UPS... {!r}'.format(apcupsd_host), file=sys.stderr)
+    ups = apc.parse(apc.get(host=apcupsd_host))
+
+    serial_no = ups.get('SERIALNO', '000000000000')
+    model = ups.get('MODEL', 'Unknown')
+    firmware = ups.get('FIRMWARE', 'FW 000.00')
+
+    if not alias:
+        alias = serial_no
+
+    mqtt_client = HaCapableMqttClient(MQTT_TOPIC, broker_host=mqtt_host, broker_port=mqtt_port, broker_auth=mqtt_auth)
+
+    mqtt_topic = mqtt_client.get_abs_topic('ups', alias)
+    config = Config(serial_no, alias, model, firmware, mqtt_topic, mqtt_client.status_topic)
+
+    print('Configuring Home Assistant via MQTT Discovery... {}:{}'.format(mqtt_host, mqtt_port), file=sys.stderr)
+
+    discovery_msgs = [
+        {
+            'topic': sensor.topic,
+            'payload': json.dumps(sensor.payload, sort_keys=True),
+            'retain': True,
+        }
+        for sensor in config.sensors
+    ]
+    mqtt_client.publish_multiple(discovery_msgs)
+
+    print('Starting value updater loop...', file=sys.stderr)
+
+    signal.signal(signal.SIGINT, stop_main_loop)
+    signal.signal(signal.SIGTERM, stop_main_loop)
+
+    exiting_main_loop = False
+    try:
+        while True:
+            main_loop(apcupsd_host, debug_logging, mqtt_client, mqtt_topic)
+
+            for _ in range(interval * 2):
+                time.sleep(0.5)
+
+                if exiting_main_loop:
+                    exit(0)
+
+    finally:
+        mqtt_client.publish_offline_status()
+
+
+def stop_main_loop(*args) -> None:
+    global exiting_main_loop
+
+    exiting_main_loop = True
+
+
+def main_loop(apcupsd_host, debug_logging, mqtt_client, mqtt_topic):
+    try:
+        ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
+    except Exception as e:
+        print('ERROR: {!r}'.format(e), file=sys.stderr)
+        mqtt_client.publish_offline_status()
+
+        return
+
+    status = {
+        key.lower(): str(value)
+        for key, value in ups_data.items()
+    }
+
+    status_string = json.dumps(status, sort_keys=True)
+    if debug_logging:
+        print(status_string)
+
+    mqtt_client.publish_single(mqtt_topic, status_string)
+    mqtt_client.publish_online_status()
 
 
 if __name__ == '__main__':
