@@ -234,11 +234,16 @@ def stop_main_loop(*args) -> None:
     exiting_main_loop = True
 
 
-def main_loop(apcupsd_host, mqtt_client, mqtt_topic):
+def main_loop(apcupsd_host: str, mqtt_client: HaCapableMqttClient, mqtt_topic: str) -> None:
     try:
         ups_data = apc.parse(apc.get(host=apcupsd_host), strip_units=True)
     except Exception as e:
-        _LOGGER.exception('ERROR: {!r}'.format(e), exc_info=False)
+        message = repr(e)
+
+        if isinstance(e, OSError) and 'No route to host' in message:
+            message = '{} ({})'.format(message, apcupsd_host)
+
+        _LOGGER.error('ERROR: '.format(message), exc_info=False)
         mqtt_client.publish_offline_status()
 
         return
