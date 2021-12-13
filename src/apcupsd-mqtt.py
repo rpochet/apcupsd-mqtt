@@ -161,9 +161,14 @@ def main():
     if not alias:
         alias = serial_no
 
-    mqtt_client = HaCapableMqttClient(MQTT_TOPIC, broker_host=mqtt_host, broker_port=mqtt_port, broker_auth=mqtt_auth)
+    mqtt_client = HaCapableMqttClient(
+        '{}/{}'.format(MQTT_TOPIC, alias),
+        broker_host=mqtt_host,
+        broker_port=mqtt_port,
+        broker_auth=mqtt_auth
+    )
 
-    mqtt_topic = mqtt_client.get_abs_topic('ups', alias)
+    mqtt_topic = mqtt_client.get_abs_topic('ups')
     config = Config(serial_no, alias, model, firmware, mqtt_topic, mqtt_client.status_topic)
 
     _LOGGER.info('Configuring Home Assistant via MQTT Discovery... {}:{}'.format(mqtt_host, mqtt_port))
