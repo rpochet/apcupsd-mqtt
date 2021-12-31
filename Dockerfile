@@ -7,6 +7,5 @@ COPY src/requirements.txt ./
 RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 COPY src/apcupsd-mqtt.py ./
-COPY src/config.yml ./
 
 CMD ["python", "/app/apcupsd-mqtt.py"]

@@ -1,3 +1,4 @@
-apcaccess==0.0.13
-paho-mqtt==1.6.1
-pyyaml>=3.11
+PrettyTable
+apcaccess
+paho-mqtt
+pyfiglet
