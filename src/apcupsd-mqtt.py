@@ -8,8 +8,6 @@ import logging
 import socket
 import pyfiglet
 
-
-
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -23,17 +21,18 @@ MQTT_USER = os.getenv('MQTT_USER')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
 MQTT_PORT = int(os.getenv('MQTT_PORT', 1883))
 MQTT_HOST = os.getenv('MQTT_HOST', 'localhost')
+MQTT_TOPIC = os.getenv('MQTT_TOPIC', 'gladys/master/device')
 INTERVAL = float(os.getenv('INTERVAL', 15))
-UPS_ALIAS = os.getenv('UPS_ALIAS',socket.gethostname())
-APCUPSD_HOST = os.getenv('APCUPSD_HOST','127.0.0.1')
-LOG_LEVEL = os.getenv('LOG_LEVEL',logging.INFO)
+UPS_ALIAS = os.getenv('UPS_ALIAS', socket.gethostname())
+APCUPSD_HOST = os.getenv('APCUPSD_HOST', '127.0.0.1')
+LOG_LEVEL = os.getenv('LOG_LEVEL', logging.INFO)
 logger.setLevel(LOG_LEVEL)
-
 
 t = PrettyTable(['Key','Value'])
 t.add_row(['MQTT_USER', MQTT_USER])
 t.add_row(['MQTT_PASSWORD', MQTT_PASSWORD])
 t.add_row(['MQTT_HOST', MQTT_HOST])
+t.add_row(['MQTT_TOPIC', MQTT_TOPIC])
 t.add_row(['INTERVAL', INTERVAL])
 t.add_row(['UPS_ALIAS', UPS_ALIAS])
 t.add_row(['ACPUPSD_HOST', APCUPSD_HOST])
@@ -60,14 +59,12 @@ def pub_mqtt( topic, value):
     return client1.publish(topic, value)
 
 def main():
-    MQTT_TOPIC_PREFIX="/apcupsd"
     ups = apc.parse(apc.get(host=APCUPSD_HOST))
     HOSTNAME = ups.get('HOSTNAME', 'apcupsd-mqtt')
-    MQTT_TOPIC_PREFIX = MQTT_TOPIC_PREFIX + "/" + UPS_ALIAS + "/"
+    MQTT_TOPIC_PREFIX = MQTT_TOPIC + "/mqtt:" + UPS_ALIAS + "/feature/mqtt:"
 
     first_run = True
     logger.info("Printing first submission for debug purposes:")
-
 
     result = pyfiglet.figlet_format("apcupsd-mqtt")
     print( result )
@@ -81,10 +78,9 @@ def main():
 
         except:
             logger.error("unable to conjure up the watts. @brandon you're bad at maths.")
-#        watts = float(os.getenv('WATTS', ups.get('NOMPOWER', 0.0))) * 0.01 * float(ups.get('LOADPCT', 0.0))
 
         for k in ups_data:
-            topic_id = MQTT_TOPIC_PREFIX + str(k)
+            topic_id = MQTT_TOPIC_PREFIX + str(k) + "/state"
             if first_run:
                 logger.info("%s = %s" % (topic_id, str(ups_data[k])))
             pub_mqtt( topic_id, str(ups_data[k]) )
