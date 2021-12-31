@@ -8,8 +8,6 @@ import logging
 import socket
 import pyfiglet
 
-
-
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -28,7 +26,6 @@ UPS_ALIAS = os.getenv('UPS_ALIAS',socket.gethostname())
 APCUPSD_HOST = os.getenv('APCUPSD_HOST','127.0.0.1')
 LOG_LEVEL = os.getenv('LOG_LEVEL',logging.INFO)
 logger.setLevel(LOG_LEVEL)
-
 
 t = PrettyTable(['Key','Value'])
 t.add_row(['MQTT_USER', MQTT_USER])
@@ -60,14 +57,13 @@ def pub_mqtt( topic, value):
     return client1.publish(topic, value)
 
 def main():
-    MQTT_TOPIC_PREFIX="/apcupsd"
+    MQTT_TOPIC_PREFIX="gladys/device/"
     ups = apc.parse(apc.get(host=APCUPSD_HOST))
     HOSTNAME = ups.get('HOSTNAME', 'apcupsd-mqtt')
-    MQTT_TOPIC_PREFIX = MQTT_TOPIC_PREFIX + "/" + UPS_ALIAS + "/"
+    MQTT_TOPIC_PREFIX = MQTT_TOPIC_PREFIX + "/mqtt:" + UPS_ALIAS + "/feature/mqtt:"
 
     first_run = True
     logger.info("Printing first submission for debug purposes:")
-
 
     result = pyfiglet.figlet_format("apcupsd-mqtt")
     print( result )
@@ -81,10 +77,9 @@ def main():
 
         except:
             logger.error("unable to conjure up the watts. @brandon you're bad at maths.")
-#        watts = float(os.getenv('WATTS', ups.get('NOMPOWER', 0.0))) * 0.01 * float(ups.get('LOADPCT', 0.0))
 
         for k in ups_data:
-            topic_id = MQTT_TOPIC_PREFIX + str(k)
+            topic_id = MQTT_TOPIC_PREFIX + str(k) + "/state"
             if first_run:
                 logger.info("%s = %s" % (topic_id, str(ups_data[k])))
             pub_mqtt( topic_id, str(ups_data[k]) )
