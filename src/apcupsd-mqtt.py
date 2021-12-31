@@ -57,10 +57,9 @@ def pub_mqtt( topic, value):
     return client1.publish(topic, value)
 
 def main():
-    MQTT_TOPIC_PREFIX="gladys/device/"
     ups = apc.parse(apc.get(host=APCUPSD_HOST))
     HOSTNAME = ups.get('HOSTNAME', 'apcupsd-mqtt')
-    MQTT_TOPIC_PREFIX = MQTT_TOPIC_PREFIX + "/mqtt:" + UPS_ALIAS + "/feature/mqtt:"
+    MQTT_TOPIC_PREFIX = "gladys/master/device/mqtt:" + UPS_ALIAS + "/feature/mqtt:"
 
     first_run = True
     logger.info("Printing first submission for debug purposes:")
