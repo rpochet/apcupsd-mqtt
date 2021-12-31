@@ -1,7 +1,7 @@
 # APCUPSD to MQTT
 
 - Publish APCUPSD data to MQTT
-- [Home Assistant](https://www.home-assistant.io/) integration with auto-discovery (compatible w/ version 2021.11+)
+- [Gladys](https://gladysassistant.com/) integration with Gladys
 
 
 ## Usage
@@ -48,3 +48,4 @@
 - ``MQTT_PORT`` MQTT broker hostname or IP address (_integer_, default: `1883`)
 - ``MQTT_USER`` MQTT auth user (_optional string_)
 - ``MQTT_PASSWORD`` MQTT auth password (_optional string_)
+- ``MQTT_TOPIC`` MQTT root topic (_optional string_, default: `gladys/master/device`)
