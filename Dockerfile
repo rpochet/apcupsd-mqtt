@@ -1,12 +1,12 @@
-FROM python:3-alpine
-MAINTAINER Brandon <hey@bgulla.dev>
+FROM python:3.9
+LABEL org.opencontainers.image.source="https://github.com/andras-tim/apcupsd-mqtt"
 
-USER root
-COPY ./src /src
-RUN pip install -r /src/requirements.txt \
-    && chown -R 1001:1001 /src
+WORKDIR /app
 
-USER 1001
-WORKDIR ["/src"]
+COPY src/requirements.txt ./
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
-CMD ["python", "/src/apcupsd-mqtt.py"]
+COPY src/apcupsd-mqtt.py ./
+COPY src/config.yml ./
+
+CMD ["python", "/app/apcupsd-mqtt.py"]
